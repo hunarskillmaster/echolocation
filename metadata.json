@@ -1,0 +1,6 @@
+{
+  "name": "Echolocation",
+  "description": "A sound-driven horror and mystery exploration game in pure darkness where you navigate by procedural sonar echoes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
