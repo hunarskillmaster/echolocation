@@ -6,10 +6,9 @@
 
 There are no ambient lights, no glowing floor grids, and no safety nets—just a pitch-black screen. Every time you move or emit a sonar pulse, expanding rings of cyan and white light bounce off the walls around you, briefly mapping out corridors, hidden clues, and whatever else happens to be patrolling in the dark.
 
-🕹️ **Play Live:** `[Insert your GitHub Pages / Vercel / itch.io link here]`  
+🕹️ **Play Live:** `https://hunarskillmaster.github.io/echolocation/`  
 
 ---
-
 ### How It Works
 
 * **Blind Navigation:** The world starts at pure `#000000`. Walls, doors, and hazards only exist to your eyes for the few seconds after a sound wave hits them and fades away.
