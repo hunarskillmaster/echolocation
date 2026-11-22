@@ -35,3 +35,16 @@ There are no ambient lights, no glowing floor grids, and no safety nets—just a
 * **TypeScript / JavaScript** for 2D ray-segment intersections and bounce physics
 * **Web Audio API** for procedural sonar synthesis, stereo panning, and distance filtering
 * Zero external asset packs—built late at night with way too much caffeine
+
+### Running It Locally
+
+If you want to poke around the code or run it on your own machine:
+
+
+# Clone the repo
+git clone [https://github.com/](https://hunarskillmaster.github.io/echolocation/)[hunarskillmaster]/echolocation.git
+cd echolocation
+
+# Install dependencies & start dev server (if using Vite/TS)
+npm install
+npm run dev
