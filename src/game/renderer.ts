@@ -21,20 +21,19 @@ export function renderWorld(
   width: number,
   height: number,
 ): void {
-  // True pitch-black void (#000000)
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, width, height);
 
   ctx.save();
 
-  // Camera translation + decaying trauma shake
+  // screen shake - trauma squared so it only gets aggressive when really high
   const shakeMag = world.trauma * world.trauma * 16;
   const shakeX = shakeMag > 0.1 ? (Math.random() * 2 - 1) * shakeMag : 0;
   const shakeY = shakeMag > 0.1 ? (Math.random() * 2 - 1) * shakeMag : 0;
 
   ctx.translate(width * 0.5 - world.camera.x + shakeX, height * 0.5 - world.camera.y + shakeY);
 
-  // 1. Acoustic ripples (player footsteps, bio-clicks, clue pulses)
+  // 1. acoustic ripples (footsteps, bio clicks, clue pulses)
   for (const r of world.ripples) {
     const alpha = clamp(r.life / r.maxLife, 0, 1);
     ctx.beginPath();
@@ -52,7 +51,7 @@ export function renderWorld(
     ctx.stroke();
   }
 
-  // 2. Expanding Sonar Wavefronts (crisp white + muted cyan glow)
+  // 2. sonar wavefronts
   for (const wave of world.waves) {
     const progress = clamp(wave.radius / wave.maxRadius, 0, 1);
     const alpha = (1 - progress) * (1 - progress * 0.35) * wave.intensity;
@@ -61,14 +60,14 @@ export function renderWorld(
     const startAngle = wave.isFocused ? wave.angleCenter - wave.coneHalfAngle : 0;
     const endAngle = wave.isFocused ? wave.angleCenter + wave.coneHalfAngle : Math.PI * 2;
 
-    // Outer muted cyan atmospheric wake
+    // wide cyan glow behind the wavefront
     ctx.beginPath();
     ctx.arc(wave.origin.x, wave.origin.y, wave.radius, startAngle, endAngle);
     ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.42})`;
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    // Inner razor-sharp white wavefront
+    // sharp white edge
     ctx.beginPath();
     ctx.arc(wave.origin.x, wave.origin.y, wave.radius, startAngle, endAngle);
     ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
@@ -76,14 +75,14 @@ export function renderWorld(
     ctx.stroke();
   }
 
-  // 3. Fading Echo Segments on walls / pillars / exit frame (only visible when lit by echoes)
+  // 3. echo segments left on walls after a ping
   ctx.lineCap = 'round';
   for (const seg of world.echoSegments) {
     const decay = clamp(seg.life / seg.maxLife, 0, 1);
     const alpha = Math.pow(decay, 1.35) * seg.intensity;
     if (alpha <= 0.012) continue;
 
-    // Soft cyan echo glow
+    // glow layer
     ctx.beginPath();
     ctx.moveTo(seg.ax, seg.ay);
     ctx.lineTo(seg.bx, seg.by);
@@ -99,7 +98,7 @@ export function renderWorld(
     ctx.lineWidth = seg.bounce === 0 ? 5.5 : 3.5;
     ctx.stroke();
 
-    // Crisp white wireframe core
+    // bright core line
     ctx.beginPath();
     ctx.moveTo(seg.ax, seg.ay);
     ctx.lineTo(seg.bx, seg.by);
@@ -111,7 +110,7 @@ export function renderWorld(
     ctx.stroke();
   }
 
-  // 4. Hit Sparks at ray intersection & bounce points
+  // 4. sparks at hit points
   for (let i = 0; i < world.sparks.length; i++) {
     const s = world.sparks[i];
     if (!s.active) continue;
@@ -125,7 +124,7 @@ export function renderWorld(
     ctx.fillRect(s.x - 1.25, s.y - 1.25, 2.5, 2.5);
   }
 
-  // 5. Clues (visible strictly when illuminated by sonar echo or very close proximity)
+  // 5. clue pickups - only visible when pinged or very close
   for (const clue of world.clues) {
     if (clue.collected) continue;
     const echoAlpha = clamp(clue.echoVisibility / clue.echoDecayMax, 0, 1);
@@ -144,10 +143,11 @@ export function renderWorld(
     ctx.restore();
   }
 
-  // 6. Sealed / Unlocked Exit Hatch (echo-only visibility, plus faint chime ring once unlocked)
+  // 6. exit hatch
   {
     const ex = world.exit;
     const echoAlpha = clamp(ex.echoVisibility / ex.echoDecayMax, 0, 1);
+    // subtle pulse animation once unlocked so player can find it
     const unlockedGlow = ex.unlocked ? 0.26 + 0.14 * Math.sin(world.elapsedTime * 4) : 0;
     const alpha = Math.max(echoAlpha, unlockedGlow);
 
@@ -173,7 +173,7 @@ export function renderWorld(
     }
   }
 
-  // 7. Patrolling Entities (wireframe silhouettes visible ONLY when pinged or telegraphing)
+  // 7. enemy wireframes - only visible when pinged or in telegraph state
   for (const ent of world.entities) {
     const echoAlpha = clamp(ent.echoVisibility / ent.echoDecayMax, 0, 1);
     const telegraphBoost = ent.state === 'telegraph' ? 0.95 : 0;
@@ -191,7 +191,6 @@ export function renderWorld(
     ctx.lineWidth = 2;
 
     if (ent.kind === 'stalker') {
-      // Sharp triangular hound silhouette
       ctx.beginPath();
       ctx.moveTo(ent.radius + 4, 0);
       ctx.lineTo(-ent.radius, -ent.radius * 0.85);
@@ -200,7 +199,7 @@ export function renderWorld(
       ctx.closePath();
       ctx.stroke();
     } else if (ent.kind === 'sentinel') {
-      // Hexagonal resonant anchor
+      // hexagon
       ctx.beginPath();
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2;
@@ -212,7 +211,7 @@ export function renderWorld(
       ctx.closePath();
       ctx.stroke();
     } else {
-      // Patroller diamond-eye frame
+      // diamond for patroller
       ctx.beginPath();
       ctx.moveTo(ent.radius, 0);
       ctx.lineTo(0, ent.radius * 0.85);
@@ -224,7 +223,7 @@ export function renderWorld(
     ctx.restore();
   }
 
-  // 8. Player Marker (subtle crisp self-awareness reticle in the dark)
+  // 8. player marker
   if (world.phase === 'playing' || world.phase === 'paused') {
     const p = world.player;
     const blinkOff = p.invulnTimer > 0 && Math.floor(p.invulnTimer * 16) % 2 === 1;
@@ -233,7 +232,7 @@ export function renderWorld(
       ctx.translate(p.pos.x, p.pos.y);
       ctx.rotate(p.facing);
 
-      // Subtle directional aim tick
+      // aim tick in facing direction
       ctx.beginPath();
       ctx.moveTo(p.radius + 5, 0);
       ctx.lineTo(p.radius + 11, 0);
@@ -241,7 +240,6 @@ export function renderWorld(
       ctx.lineWidth = 1.6;
       ctx.stroke();
 
-      // Player ring
       ctx.beginPath();
       ctx.arc(0, 0, p.radius * 0.65, 0, Math.PI * 2);
       ctx.strokeStyle = p.sneaking ? 'rgba(148, 163, 184, 0.7)' : 'rgba(255, 255, 255, 0.92)';
@@ -258,3 +256,4 @@ export function renderWorld(
 
   ctx.restore();
 }
+
