@@ -24,6 +24,7 @@ export function normalize(v: Vec2): Vec2 {
   return { x: v.x / len, y: v.y / len };
 }
 
+// returns [-0.92, 0.92] - positive = right speaker
 export function computeStereoPan(listener: Vec2, source: Vec2, maxPanDist = 520): number {
   return clamp((source.x - listener.x) / maxPanDist, -0.92, 0.92);
 }
@@ -62,7 +63,7 @@ export function intersectRaySegment(
   const sy = seg.b.y - seg.a.y;
 
   const denom = rx * sy - ry * sx;
-  if (Math.abs(denom) < 1e-7) return null;
+  if (Math.abs(denom) < 1e-7) return null; // parallel
 
   const qpx = seg.a.x - origin.x;
   const qpy = seg.a.y - origin.y;
@@ -73,7 +74,7 @@ export function intersectRaySegment(
   const u = (qpx * ry - qpy * rx) / denom;
   if (u < 0 || u > 1) return null;
 
-  // Ensure normal points back toward ray origin
+  // flip normal to face toward ray origin
   let nx = seg.nx;
   let ny = seg.ny;
   if (rx * nx + ry * ny > 0) {
@@ -187,7 +188,7 @@ export function castRayWithBounces(
     remainingDist -= bestHit.distance;
     if (remainingDist < 28) break;
 
-    // Clues and entities absorb/scatter cleanly without crisp mirror wall reflection
+    // soft objects absorb the ray instead of reflecting it
     if (bestHit.kind === 'entity' || bestHit.kind === 'clue') {
       break;
     }
@@ -212,7 +213,7 @@ export function resolveCircleWallCollisions(
   let x = clamp(pos.x, radius + 24, worldW - radius - 24);
   let y = clamp(pos.y, radius + 24, worldH - radius - 24);
 
-  // Two passes resolve corner wedging smoothly
+  // two passes helps with corner cases (pun intended)
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < walls.length; i++) {
       const w = walls[i];
@@ -229,7 +230,7 @@ export function resolveCircleWallCollisions(
           x += (dx / d) * overlap;
           y += (dy / d) * overlap;
         } else {
-          // Center inside rect fallback: push out along shallowest axis
+          // center is inside the rect, push out along shortest axis
           const leftPen = x - w.x;
           const rightPen = w.x + w.w - x;
           const topPen = y - w.y;
