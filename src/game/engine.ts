@@ -24,12 +24,17 @@ import {
   WorldState,
 } from './types';
 
+// movement feels ok at 178, sneak at 86 gives good tension
 export const PLAYER_SPEED = 178;
 export const PLAYER_SNEAK_SPEED = 86;
+
+// pulse costs - omni is pricier since it covers 360
 export const FOCUSED_PULSE_COST = 20;
 export const OMNI_PULSE_COST = 34;
-export const PULSE_COOLDOWN = 0.28;
-export const ECHO_CHARGE_REGEN = 19; // per second
+export const PULSE_COOLDOWN = 0.28; // seconds between pulses
+export const ECHO_CHARGE_REGEN = 19; // units per second
+
+// object pool sizes, might need bumping if sparks cut off
 export const MAX_SPARKS = 420;
 export const MAX_ECHO_SEGMENTS = 1800;
 
@@ -44,6 +49,7 @@ export interface ActiveWaveInternal extends SonarWave {
   pendingHits: PendingWaveHit[];
 }
 
+// pre-allocate so we avoid GC spikes during gameplay
 function createSparkPool(): HitSpark[] {
   const pool: HitSpark[] = new Array(MAX_SPARKS);
   for (let i = 0; i < MAX_SPARKS; i++) {
@@ -119,7 +125,10 @@ function spawnSpark(
 ): void {
   const s = world.sparks[world.sparkCursor];
   world.sparkCursor = (world.sparkCursor + 1) % MAX_SPARKS;
+
+  // first bounce sparks are snappier
   const speed = 18 + (bounce === 0 ? 22 : 10);
+
   s.active = true;
   s.x = x;
   s.y = y;
@@ -134,11 +143,13 @@ function spawnSpark(
 function addEchoSegmentFromHit(world: WorldState, hit: RayHit, intensity: number): void {
   if (!hit.segment) return;
   const seg = hit.segment;
+
   const sdx = seg.b.x - seg.a.x;
   const sdy = seg.b.y - seg.a.y;
   const segLen = Math.hypot(sdx, sdy);
   if (segLen < 1) return;
 
+  // project the hit point onto the segment, then expand a small lit band
   const ux = sdx / segLen;
   const uy = sdy / segLen;
   const proj = (hit.point.x - seg.a.x) * ux + (hit.point.y - seg.a.y) * uy;
@@ -147,16 +158,23 @@ function addEchoSegmentFromHit(world: WorldState, hit: RayHit, intensity: number
   const t1 = clamp(proj + halfSpan, 0, segLen);
   if (t1 - t0 < 1) return;
 
-  const maxLife =
-    hit.kind === 'exit'
-      ? 3.5
-      : hit.kind === 'pillar'
-        ? 3.0
-        : hit.bounce === 0
-          ? 3.1
-          : hit.bounce === 1
-            ? 2.2
-            : 1.65;
+  // special surfaces stay visible longer
+  let maxLife: number;
+  if (hit.kind === 'exit') {
+    maxLife = 3.5;
+  } else if (hit.kind === 'pillar') {
+    maxLife = 3.0;
+  } else if (hit.bounce === 0) {
+    maxLife = 3.1;
+  } else if (hit.bounce === 1) {
+    maxLife = 2.2;
+  } else {
+    maxLife = 1.65;
+  }
+
+  let intensityMult = 1;
+  if (hit.bounce === 1) intensityMult = 0.52;
+  else if (hit.bounce >= 2) intensityMult = 0.28;
 
   const echoSeg: EchoSegment = {
     ax: seg.a.x + ux * t0,
@@ -164,7 +182,7 @@ function addEchoSegmentFromHit(world: WorldState, hit: RayHit, intensity: number
     bx: seg.a.x + ux * t1,
     by: seg.a.y + uy * t1,
     kind: hit.kind,
-    intensity: intensity * (hit.bounce === 0 ? 1 : hit.bounce === 1 ? 0.52 : 0.28),
+    intensity: intensity * intensityMult,
     life: maxLife,
     maxLife,
     bounce: hit.bounce,
@@ -212,6 +230,8 @@ export function emitSonarPulse(
     world.player.lastNoiseLevel = 'PING';
     world.player.noiseDisplayTimer = 0.85;
     world.pulsesUsed += 1;
+
+    // trauma adds a little screen shake, focused is slightly less dramatic
     world.trauma = Math.min(0.32, world.trauma + (isFocused ? 0.14 : 0.2));
 
     world.events.push({
@@ -220,7 +240,7 @@ export function emitSonarPulse(
       isFocused,
     });
 
-    // Alert nearby entities to the player's acoustic pulse
+    // nearby enemies hear the ping too
     const hearRadius = isFocused ? 540 : 720;
     for (const entity of world.entities) {
       const d = dist(origin, entity.pos);
@@ -230,6 +250,7 @@ export function emitSonarPulse(
     }
   }
 
+  // focused shoots a narrower cone but travels further
   const rayCount = isFocused ? 132 : 216;
   const coneHalfAngle = isFocused ? Math.PI * 0.24 : Math.PI;
   const maxDist = isFocused ? 690 : 540;
@@ -277,12 +298,14 @@ export function emitSonarPulse(
 
 function alertEntityToSound(entity: Entity, soundOrigin: Vec2, d: number): void {
   if (entity.kind === 'stalker') {
+    // stalker has really good hearing, starts chasing if already alerted
     if (d < 520) {
       entity.investigateTarget = { x: soundOrigin.x, y: soundOrigin.y };
       if (entity.state === 'patrol') {
         entity.state = 'telegraph';
         entity.stateTimer = 0.42;
       } else if (entity.state === 'investigate') {
+        // already suspicious - escalate straight to chase
         entity.state = 'chase';
         entity.stateTimer = 4.0;
       }
@@ -294,6 +317,7 @@ function alertEntityToSound(entity: Entity, soundOrigin: Vec2, d: number): void 
       entity.stateTimer = 3.6;
     }
   } else if (entity.kind === 'sentinel') {
+    // sentinel doesn't wander much, only reacts to close sounds
     if (d < 320) {
       entity.investigateTarget = { x: soundOrigin.x, y: soundOrigin.y };
       entity.state = 'investigate';
@@ -375,9 +399,8 @@ function stepEntities(world: WorldState, dt: number): void {
     const dToPlayer = dist(ent.pos, playerPos);
     const canSee = dToPlayer < 280 && hasLineOfSight(ent.pos, playerPos, world.segments);
 
-    // Distinct behavioral policies per archetype
     if (ent.kind === 'patroller') {
-      // Sweep Ward: steady corridor patrol, detours to investigate loud sounds
+      // patrols corridors, detouring toward sounds
       if (canSee && !world.player.sneaking && dToPlayer < 210) {
         ent.state = 'chase';
         ent.stateTimer = 2.6;
@@ -400,7 +423,7 @@ function stepEntities(world: WorldState, dt: number): void {
         }
       }
     } else if (ent.kind === 'stalker') {
-      // Acoustic Hound: slower creep on patrol, telegraphs then lunges fast toward pings/footsteps
+      // slower on patrol but fast when it locks on - telegraphs before lunging
       if (canSee && dToPlayer < 175) {
         ent.investigateTarget = { ...playerPos };
         if (ent.state === 'patrol') {
@@ -441,7 +464,7 @@ function stepEntities(world: WorldState, dt: number): void {
         }
       }
     } else {
-      // Resonant Anchor (sentinel): guards east wing, emits periodic bio-clicks
+      // sentinel - emits bio clicks, doesn't wander far from its zone
       if (ent.bioPulseTimer <= 0) {
         ent.bioPulseTimer = 2.4;
         ent.echoVisibility = Math.max(ent.echoVisibility, 1.15);
@@ -479,7 +502,7 @@ function stepEntities(world: WorldState, dt: number): void {
       }
     }
 
-    // Distance-attenuated ambient entity sound
+    // ambient entity audio - quieter and less frequent when far away
     if (ent.soundCooldown <= 0 && dToPlayer < 680) {
       ent.soundCooldown = ent.state === 'chase' ? 0.52 : clamp(0.65 + (dToPlayer / 680) * 1.1, 0.55, 1.75);
       world.events.push({
@@ -490,7 +513,7 @@ function stepEntities(world: WorldState, dt: number): void {
       });
     }
 
-    // Player contact check
+    // check if entity overlaps player
     if (
       world.player.invulnTimer <= 0 &&
       dToPlayer < ent.radius + world.player.radius - 2
@@ -530,6 +553,7 @@ function applyPlayerHit(world: WorldState, attacker: Entity): void {
   world.hitstopTimer = 0.065;
   world.trauma = 0.72;
 
+  // knock the player back away from attacker
   const pushDir = normalize({
     x: world.player.pos.x - attacker.pos.x,
     y: world.player.pos.y - attacker.pos.y,
@@ -547,7 +571,7 @@ function applyPlayerHit(world: WorldState, attacker: Entity): void {
   world.player.pos.x = pushed.x;
   world.player.pos.y = pushed.y;
 
-  // Shockwave reveals nearby walls briefly so the player can bolt
+  // phantom pulse on hit so the player can see where they are for a second
   emitSonarPulse(world, world.player.pos, 0, false, true);
 
   world.events.push({
@@ -564,9 +588,10 @@ function applyPlayerHit(world: WorldState, attacker: Entity): void {
 
 export function stepWorld(world: WorldState, rawDt: number, input: InputState): void {
   world.events.length = 0;
+  // cap dt so a tab switch doesn't send entities flying across the map
   const dt = Math.min(rawDt, 0.05);
 
-  // Title screen ambient phantom sonar showcase
+  // title screen runs phantom pulses for the animated background preview
   if (world.phase === 'title') {
     world.phantomTimer -= dt;
     if (world.phantomTimer <= 0) {
@@ -589,7 +614,7 @@ export function stepWorld(world: WorldState, rawDt: number, input: InputState): 
     return;
   }
 
-  // Hitstop freezes simulation physics briefly while rendering & trauma continue
+  // Hitstop: freeze the sim briefly but keep rendering & trauma ticking
   world.trauma = Math.max(0, world.trauma - dt * 1.45);
   if (world.hitstopTimer > 0) {
     world.hitstopTimer = Math.max(0, world.hitstopTimer - dt);
@@ -686,7 +711,10 @@ export function stepWorld(world: WorldState, rawDt: number, input: InputState): 
     emitSonarPulse(world, p.pos, p.facing, false, false);
   }
 
-  // Clue collection & ambient clue harmonic shimmer
+  // TODO: consider adding a charge-based delay between focused and omni
+  // so players can't instantly switch modes to game the cooldown
+
+  // clue collection & ambient shimmer decay
   for (const clue of world.clues) {
     clue.echoVisibility = Math.max(0, clue.echoVisibility - dt);
     clue.pingPulse = Math.max(0, clue.pingPulse - dt * 1.6);
