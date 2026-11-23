@@ -13,32 +13,38 @@ export interface LevelBlueprint {
 }
 
 /**
- * Interconnected dark subterranean acoustic facility (2200 x 1600).
- * Every corridor is >= 140px wide so the player (r=14) has clean navigation and
- * clear sightlines for acoustic echoes to bounce around corners.
+ * The main level - a 2200x1600 underground facility.
+ * Corridors are at least 140px wide so the player can navigate comfortably
+ * and echoes have room to bounce back without clipping inside walls.
+ * 
+ * Layout overview (rough):
+ *  - West: spawn vestibule + resonance lab (safe zone)
+ *  - Center: acoustic atrium with pillar baffles
+ *  - South: archive wing, 2 clues down here
+ *  - East: containment corridor leading to exit hatch
  */
 export function buildFacilityLevel(): LevelBlueprint {
   const width = 2200;
   const height = 1600;
 
   const walls: WallRect[] = [
-    // Outer perimeter containment walls
+    // outer walls
     { x: 0, y: 0, w: width, h: 32, kind: 'wall' },
     { x: 0, y: height - 32, w: width, h: 32, kind: 'wall' },
     { x: 0, y: 32, w: 32, h: height - 64, kind: 'wall' },
     { x: width - 32, y: 32, w: 32, h: height - 64, kind: 'wall' },
 
-    // Entry Vestibule (West-Southwest safe zone) partitions
+    // west vestibule divider (gap left for door at y=380-610 and y=1030-1210)
     { x: 380, y: 32, w: 36, h: 380, kind: 'wall' },
     { x: 380, y: 610, w: 36, h: 420, kind: 'wall' },
     { x: 380, y: 1210, w: 36, h: 358, kind: 'wall' },
 
-    // North-West Resonance Lab & pillars
+    // north-west lab section + small pillars
     { x: 416, y: 360, w: 340, h: 36, kind: 'wall' },
     { x: 180, y: 210, w: 60, h: 60, kind: 'pillar' },
     { x: 180, y: 1240, w: 68, h: 68, kind: 'pillar' },
 
-    // Central Acoustic Atrium (open hub with acoustic baffle pillars)
+    // central atrium baffle pillars
     { x: 756, y: 220, w: 36, h: 380, kind: 'wall' },
     { x: 756, y: 790, w: 36, h: 410, kind: 'wall' },
     { x: 960, y: 520, w: 72, h: 72, kind: 'pillar' },
@@ -46,12 +52,12 @@ export function buildFacilityLevel(): LevelBlueprint {
     { x: 960, y: 920, w: 72, h: 72, kind: 'pillar' },
     { x: 1180, y: 920, w: 72, h: 72, kind: 'pillar' },
 
-    // South Archive Wing
+    // south archive wing
     { x: 580, y: 1200, w: 420, h: 36, kind: 'wall' },
     { x: 1200, y: 1200, w: 380, h: 36, kind: 'wall' },
     { x: 1080, y: 1360, w: 64, h: 64, kind: 'pillar' },
 
-    // East Containment Corridor & Exit Ante-chamber
+    // east containment corridor leading to exit
     { x: 1410, y: 190, w: 36, h: 410, kind: 'wall' },
     { x: 1410, y: 790, w: 36, h: 410, kind: 'wall' },
     { x: 1446, y: 360, w: 360, h: 36, kind: 'wall' },

@@ -2,19 +2,20 @@
 
 > *You can't see anything until you make a sound. Unfortunately, neither can the things hunting you.*
 
-**Echolocation** is a minimalist, sound-driven horror/mystery exploration game built in the dark for Hack Club's **#3AM** event. 
+**Echolocation** is a minimalist, sound-driven horror/mystery game I made for Hack Club's **#3AM** event. Built in one late night session with way too much caffeine and a weird obsession with making web audio sound scary.
 
-There are no ambient lights, no glowing floor grids, and no safety nets—just a pitch-black screen. Every time you move or emit a sonar pulse, expanding rings of cyan and white light bounce off the walls around you, briefly mapping out corridors, hidden clues, and whatever else happens to be patrolling in the dark.
+There are no lights. No minimap. No glowing walls. Just a pitch-black screen and whatever you can ping with a sonar pulse. Walls only exist to your eyes for a second or two after a sound wave bounces off them - then they vanish again.
 
-🕹️ **Play Live:** `https://hunarskillmaster.github.io/echolocation/`  
+🕹️ **Play Live:** `https://hunarskillmaster.github.io/echolocation/`
 
 ---
+
 ### How It Works
 
-* **Blind Navigation:** The world starts at pure `#000000`. Walls, doors, and hazards only exist to your eyes for the few seconds after a sound wave hits them and fades away.
-* **2D Raycasted Sonar & Reflections:** Clicking or pressing `Space` fires a radial burst of rays that bounce off walls, letting you "peek" around corners using reflected echoes.
-* **Procedural Web Audio:** Every sonar ping, distant echo, and proximity rumble is synthesized live in the browser using the Web Audio API—no external `.mp3` or `.wav` files used.
-* **Risk vs. Reward:** Spamming pulses keeps your surroundings visible, but sound travels both ways. Stay quiet, listen to directional audio cues, collect the scattered fragments, and find the exit.
+* **Total Darkness:** The world is pure `#000000`. Walls only appear when a sonar echo hits them and fades out over a few seconds.
+* **2D Raycasted Sonar:** Click or press `Space` to send out a burst of rays that bounce off walls (up to 2 bounces), letting you peek around corners via reflected echoes.
+* **Web Audio Only:** Every sound - pings, echoes, footsteps, enemy rumbles - is synthesized live in the browser using the Web Audio API. No audio files at all.
+* **Risk vs Reward:** Pinging keeps walls visible but sound travels both ways. Enemies hear your pulses and footsteps. Hold Shift to sneak quietly.
 
 ---
 
@@ -22,29 +23,30 @@ There are no ambient lights, no glowing floor grids, and no safety nets—just a
 
 | Action | Key / Input |
 | :--- | :--- |
-| **Move** | `W` `A` `S` `D` or `Arrow Keys` |
-| **Emit Sonar Pulse** | `Left Click` (directional) or `Spacebar` (360° pulse) |
-| **Sneak / Quiet Step** | Hold `Shift` *(optional, if implemented)* |
-| **Mute / Unmute Audio** | `M` or top-right toggle |
+| **Move** | `W` `A` `S` `D` or Arrow Keys |
+| **Focused Pulse** | `Left Click` (fires a narrow forward cone) |
+| **Omni Pulse** | `Spacebar` (360° burst, more expensive) |
+| **Sneak** | Hold `Shift` |
+| **Mute** | `M` |
+| **Pause** | `Escape` or `P` |
 
 ---
 
 ### Built With
 
-* **HTML5 Canvas** for real-time wireframe rendering and decaying echo trails
-* **TypeScript / JavaScript** for 2D ray-segment intersections and bounce physics
-* **Web Audio API** for procedural sonar synthesis, stereo panning, and distance filtering
-* Zero external asset packs—built late at night with way too much caffeine
+* **HTML5 Canvas** for rendering echo trails and wireframe silhouettes
+* **TypeScript** for the ray-segment math and bounce physics
+* **Web Audio API** for all procedural sounds (footsteps are 3-layer synthesis)
+* **React** for the HUD overlays
+* Zero external audio or image assets
+
+---
 
 ### Running It Locally
 
-If you want to poke around the code or run it on your own machine:
-
-
-# Clone the repo
-git clone [https://github.com/](https://hunarskillmaster.github.io/echolocation/)[hunarskillmaster]/echolocation.git
+```bash
+git clone https://github.com/hunarskillmaster/echolocation.git
 cd echolocation
-
-# Install dependencies & start dev server (if using Vite/TS)
 npm install
 npm run dev
+```
