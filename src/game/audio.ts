@@ -11,10 +11,8 @@ export interface FootstepAcousticProfile {
   durationSec: number;
 }
 
-/**
- * Computes footstep volume and surface-impact 'hardness' from normalized
- * movement speed ([0..1]) and whether the player is sneaking (Shift).
- */
+// returns a profile describing how "loud" and "hard" a step sounds
+// sneaking softens the attack a lot, running makes it snappy
 export function computeFootstepProfile(
   speedRatio: number,
   sneaking: boolean,
@@ -50,7 +48,7 @@ export class SoundEngine {
   private masterGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private muted = false;
-  private stepParity = 0;
+  private stepParity = 0; // alternates L/R stride
 
   public isMuted(): boolean {
     return this.muted;
@@ -222,7 +220,7 @@ export class SoundEngine {
     const ctx = this.ctx!;
     const now = ctx.currentTime;
 
-    // Subtle alternating left/right stride stereo offset and pitch variation
+    // slight L/R offset each step to fake walking stereo feel
     this.stepParity = (this.stepParity + 1) % 2;
     const strideOffset = this.stepParity === 0 ? -0.045 : 0.045;
     const dest = this.createPanner(pan + strideOffset);
